@@ -27,7 +27,12 @@ def generate_launch_description():
         executable='battery_monitor_node',
         name='battery_monitor_node',
         output='log',
-        respawn=True,
+        # No respawn: a missing INA260 makes the node exit cleanly on purpose (see
+        # battery_monitor_node.py's module docstring) - that's a permanent condition for
+        # this launch session, not a crash respawn should try to recover from. Genuine
+        # transient I2C read errors during normal operation don't exit the process at
+        # all (skip-and-retry in _on_timer), so respawn has nothing left to usefully do.
+        respawn=False,
         parameters=[LaunchConfiguration('params_file')],
     )
 

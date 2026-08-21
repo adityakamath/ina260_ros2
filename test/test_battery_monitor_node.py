@@ -33,6 +33,19 @@ class _FakeSensor:
         self.closed = True
 
 
+class _MissingSensor:
+    """Simulates no INA260 answering on the bus - check_identity() always fails."""
+
+    def __init__(self, bus_number, address):
+        pass
+
+    def check_identity(self):
+        raise node_module.INA260Error('simulated: no device at that address')
+
+    def close(self):
+        raise AssertionError('close() should never be called - the sensor never opened')
+
+
 @pytest.fixture(autouse=True)
 def fake_sensor(monkeypatch):
     monkeypatch.setattr(node_module, 'INA260Sensor', _FakeSensor)
@@ -128,3 +141,47 @@ class TestOnTimer:
         node._on_timer()
 
         assert published == []
+
+
+class TestHardwareMissing:
+    """No INA260 answering at startup must warn and shut down cleanly, not crash."""
+
+    def test_sets_hardware_missing_flag(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(node_module, 'INA260Sensor', _MissingSensor)
+        n = node_module.BatteryMonitorNode(
+            parameter_overrides=[
+                rclpy.parameter.Parameter('state_file_path', value=str(tmp_path / 'state.yaml')),
+            ]
+        )
+        try:
+            assert n.hardware_missing is True
+        finally:
+            n.destroy_node()
+
+    def test_never_creates_publisher_or_timer(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(node_module, 'INA260Sensor', _MissingSensor)
+        n = node_module.BatteryMonitorNode(
+            parameter_overrides=[
+                rclpy.parameter.Parameter('state_file_path', value=str(tmp_path / 'state.yaml')),
+            ]
+        )
+        try:
+            assert not hasattr(n, '_publisher')
+            assert not hasattr(n, '_timer')
+        finally:
+            n.destroy_node()
+
+    def test_destroy_node_does_not_touch_sensor_or_state(self, tmp_path, monkeypatch):
+        # _MissingSensor.close() raises if called - destroy_node() must not call it, and
+        # must not try to save coulomb-counter state that was never seeded from a reading.
+        monkeypatch.setattr(node_module, 'INA260Sensor', _MissingSensor)
+        n = node_module.BatteryMonitorNode(
+            parameter_overrides=[
+                rclpy.parameter.Parameter('state_file_path', value=str(tmp_path / 'state.yaml')),
+            ]
+        )
+        n.destroy_node()  # must not raise
+        assert not (tmp_path / 'state.yaml').exists()
+
+    def test_healthy_sensor_does_not_set_hardware_missing(self, node):
+        assert node.hardware_missing is False

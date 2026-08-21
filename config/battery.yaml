@@ -1,17 +1,10 @@
-# ina260_ros2 battery_monitor_node parameters.
-# Pack specs below match Seeed Studio's LeKiwi kit stock battery (E326S, 3S1P Li-ion,
-# 18650 cells, 2550 mAh nominal - 5600 mAh on the extended dual-pack version, DC 5.5x2.1mm
-# barrel jack Y-split to the servo driver board + RPi buck module). If you're running a
-# different pack, replace these with its actual values - cell_count/design_capacity_ah
-# drive both the coulomb counter's OCV recalibration (ocv_tables.py) and the
-# health/status voltage cutoffs.
 battery_monitor_node:
   ros__parameters:
     i2c_bus: 1
     i2c_address: 0x40          # Adafruit INA260 default address (0x40-0x4F via ADDR pins)
     publish_rate_hz: 2.0
     frame_id: base_link
-    current_polarity_inverted: false  # flip if wiring reads charging as negative current
+    current_polarity_inverted: true  # flip if wiring reads charging as negative current
 
     chemistry: LION              # LIPO or LION - selects the OCV table in ocv_tables.py
     cell_count: 3

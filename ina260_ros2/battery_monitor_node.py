@@ -4,6 +4,11 @@ Polls the INA260 on a timer, feeds each reading into a CoulombCounter for
 charge/percentage estimation, and derives BatteryState's status/health fields from
 the current sign and configured voltage cutoffs. See coulomb_counter.py for the
 charge-estimation strategy and README.md for parameter documentation.
+
+If no INA260 answers at startup (wrong I2C address, not fitted at all), the node logs
+one warning and exits cleanly instead of raising - for a fleet where some robots don't
+have this sensor, that's a much friendlier failure mode than a startup crash/traceback
+if whoever launches it forgets to set battery_monitor:=false.
 """
 
 import os
@@ -78,11 +83,22 @@ class BatteryMonitorNode(Node):
             state_max_stale_s=self.get_parameter('state_max_stale_s').value,
         )
 
-        self._sensor = INA260Sensor(
-            bus_number=self.get_parameter('i2c_bus').value,
-            address=self.get_parameter('i2c_address').value,
-        )
-        self._sensor.check_identity()
+        self._sensor = None
+        self._hardware_missing = False
+        i2c_bus = self.get_parameter('i2c_bus').value
+        i2c_address = self.get_parameter('i2c_address').value
+        try:
+            sensor = INA260Sensor(bus_number=i2c_bus, address=i2c_address)
+            sensor.check_identity()
+        except INA260Error as exc:
+            self.get_logger().warning(
+                f'No INA260 detected on I2C bus {i2c_bus} address 0x{i2c_address:02X} '
+                f'({exc}). Shutting down without publishing battery_state - set '
+                f'battery_monitor:=false if this robot has no INA260 fitted.'
+            )
+            self._hardware_missing = True
+            return
+        self._sensor = sensor
 
         self._publisher = self.create_publisher(BatteryState, 'battery_state', 10)
 
@@ -98,6 +114,10 @@ class BatteryMonitorNode(Node):
             f'chemistry={chemistry} cells={self._cell_count} '
             f'capacity={self._design_capacity_ah}Ah'
         )
+
+    @property
+    def hardware_missing(self) -> bool:
+        return self._hardware_missing
 
     def _on_timer(self):
         try:
@@ -161,14 +181,22 @@ class BatteryMonitorNode(Node):
         return BatteryState.POWER_SUPPLY_HEALTH_GOOD
 
     def destroy_node(self):
-        self._coulomb_counter.save_state()
-        self._sensor.close()
+        if self._sensor is not None:
+            self._coulomb_counter.save_state()
+            self._sensor.close()
         super().destroy_node()
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = BatteryMonitorNode()
+    if node.hardware_missing:
+        # No error, no traceback - the warning already logged in __init__ says why.
+        # A clean exit here also means launch's respawn (if enabled) won't keep retrying
+        # a condition that polling can't fix: the hardware is either there or it isn't.
+        node.destroy_node()
+        rclpy.try_shutdown()
+        return
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
