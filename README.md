@@ -29,6 +29,10 @@ CircuitPython/Blinka dependency.
   older than `state_max_stale_s` is distrusted and the estimate reseeds from OCV instead
 - **Configurable pack model**: cell count, chemistry (`LIPO`/`LION`), design capacity,
   and voltage cutoffs for `power_supply_health`/`power_supply_status` are all parameters
+- **Service-backed battery events** (`battery_events_node`): turns `/battery_state` into
+  discrete `std_srvs/SetBool` events - charging/discharging, low/critical/full battery -
+  for anything that watches `_service_event` introspection, like a spoken indicator (see
+  [Battery events](#battery-events))
 
 ## Wiring
 
@@ -107,6 +111,40 @@ netted out correctly rather than ignored.
 | `state_max_stale_s` | `3600.0` | Discard saved state older than this; reseed from OCV instead |
 | `serial_number` | `""` | `BatteryState.serial_number` |
 | `location` | `""` | `BatteryState.location` |
+
+## Battery events
+
+`battery_events_node` subscribes to `/battery_state` and turns it into discrete
+`std_srvs/SetBool` events - the same service-plus-introspection pattern this workspace's
+audio indicator already narrates for `/emergency_stop`, `/twist_switch`, etc. (see
+`twist_switch_node.py` in `lekiwi_control` for the pattern this follows). It hosts each
+service and calls it as its own client whenever a genuine edge fires - the only way to
+produce the request/response traffic a passive `_service_event` observer needs to see,
+since nothing external "calls" a battery threshold the way a person calls `/emergency_stop`.
+
+```bash
+ros2 launch ina260_ros2 battery_events.launch.py
+```
+
+| Service | Fires `true` when | Fires `false` when |
+|---|---|---|
+| `/battery_charging` | status transitions directly `DISCHARGING` → `CHARGING` | status transitions directly `CHARGING` → `DISCHARGING` |
+| `/battery_low` | `percentage` falls to/below `low_battery_threshold` | `percentage` climbs back above `low_battery_threshold + low_battery_hysteresis` |
+| `/battery_critical` | `percentage` falls to/below `critical_battery_threshold` | `percentage` climbs back above `critical_battery_threshold + critical_battery_hysteresis` |
+| `/battery_full` | `percentage` climbs to/above `full_battery_threshold` | `percentage` falls back below `full_battery_threshold - full_battery_hysteresis` |
+
+`/battery_charging`'s edge only fires on a *direct* status transition - passing through
+`NOT_CHARGING` or `FULL` in between suppresses both sides until the raw status returns to
+`CHARGING` or `DISCHARGING`. The three percentage services are hysteresis-debounced so a
+value oscillating near a threshold doesn't spam repeat calls; `/battery_low` and
+`/battery_critical` can both fire on the same reading if a drop jumps straight past both.
+
+| Parameter | Default |
+|---|---|
+| `battery_state_topic` | `/battery_state` |
+| `low_battery_threshold` / `low_battery_hysteresis` | `0.2` / `0.05` |
+| `critical_battery_threshold` / `critical_battery_hysteresis` | `0.1` / `0.03` |
+| `full_battery_threshold` / `full_battery_hysteresis` | `0.98` / `0.02` |
 
 ## Design notes
 

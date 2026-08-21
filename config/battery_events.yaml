@@ -1,0 +1,12 @@
+battery_events_node:
+  ros__parameters:
+    battery_state_topic: /battery_state
+
+    low_battery_threshold: 0.2       # /battery_low fires once, falling edge
+    low_battery_hysteresis: 0.05     # must climb back above threshold + this before re-arming
+
+    critical_battery_threshold: 0.1  # /battery_critical fires once, falling edge
+    critical_battery_hysteresis: 0.03
+
+    full_battery_threshold: 0.98     # /battery_full fires once, rising edge
+    full_battery_hysteresis: 0.02    # must drop back below threshold - this before re-arming
