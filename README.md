@@ -30,6 +30,20 @@ CircuitPython/Blinka dependency.
 - **Configurable pack model**: cell count, chemistry (`LIPO`/`LION`), design capacity,
   and voltage cutoffs for `power_supply_health`/`power_supply_status` are all parameters
 
+## Wiring
+
+Insert the INA260 in series with only the battery's `+` line, upstream of any Y-split
+to a charge port and the robot's load - i.e. `VIN+`/`VIN-` between the battery and the
+split, `-`/ground running straight through as a continuous common bus. That placement
+makes the sensor see **net battery current** (charge current in minus load current out)
+as a single signed value, which is exactly what the coulomb counter needs and handles
+correctly even while the pack is being charged and driving the robot at the same time -
+see [Limitations](#limitations) for the one case this placement can't distinguish.
+The INA260's logic-side `GND` (its I2C/STEMMA connector, separate from the `VIN+`/`VIN-`
+sense path) needs to share a ground reference with whatever it talks I2C to - normal on a
+single-battery robot where that host is powered from the same pack, but worth a
+continuity check (battery `-` to INA260 `GND`) if voltage readings look off.
+
 ## Quick Start
 
 ```bash
@@ -41,9 +55,10 @@ source install/setup.bash
 ros2 launch ina260_ros2 battery_monitor.launch.py
 ```
 
-Edit [`config/battery.yaml`](config/battery.yaml) for your actual pack (cell count,
-capacity, voltage cutoffs, I2C address) before relying on the published values -
-the checked-in defaults are placeholders.
+The checked-in [`config/battery.yaml`](config/battery.yaml) defaults match Seeed
+Studio's LeKiwi kit stock battery (E326S, 3S1P Li-ion, 2550 mAh). Running a different
+pack? Edit the file (cell count, chemistry, capacity, voltage cutoffs, I2C address) or
+run the [calibration wizard](#calibration) below before relying on the published values.
 
 ## Calibration
 
@@ -64,6 +79,12 @@ full-discharge capacity measurement, then offers to write the results straight i
 it prompts for confirmation against the pack's label at each ambiguous step rather than
 guessing.
 
+The resting-voltage step actively checks current during sampling and warns (offering a
+retry) if it wasn't near-zero the whole time - important with the [wiring](#wiring) above,
+since "at rest" means disconnecting both the charger and any load, not just the load. The
+capacity measurement tracks net current, so a charger left connected during the test is
+netted out correctly rather than ignored.
+
 ## Parameters
 
 | Parameter | Default | Description |
@@ -73,11 +94,11 @@ guessing.
 | `publish_rate_hz` | `2.0` | `BatteryState` publish rate |
 | `frame_id` | `base_link` | Header frame ID on published messages |
 | `current_polarity_inverted` | `false` | Flip current sign if wiring reads charging as negative |
-| `chemistry` | `LIPO` | `LIPO` or `LION` - selects the OCV table in `ocv_tables.py` |
-| `cell_count` | `4` | Series cell count |
-| `design_capacity_ah` | `5.0` | Pack design capacity |
+| `chemistry` | `LION` | `LIPO` or `LION` - selects the OCV table in `ocv_tables.py` |
+| `cell_count` | `3` | Series cell count |
+| `design_capacity_ah` | `2.55` | Pack design capacity |
 | `voltage_min_per_cell` | `3.0` | Below this → `power_supply_health = DEAD` |
-| `voltage_max_per_cell` | `4.25` | Above this → `power_supply_health = OVERVOLTAGE` |
+| `voltage_max_per_cell` | `4.2` | Above this → `power_supply_health = OVERVOLTAGE` |
 | `idle_current_threshold_a` | `0.05` | `\|current\|` below this → `NOT_CHARGING`/`FULL` status |
 | `rest_current_threshold_a` | `0.05` | `\|current\|` below this counts as "at rest" for OCV recalibration |
 | `rest_settle_s` | `60.0` | Must be at rest this long before recalibrating from OCV |
@@ -99,6 +120,20 @@ open-circuit-voltage lookup table says for the resting voltage.
 `capacity` is currently always reported equal to `design_capacity` - there's no
 capacity-fade tracking (no estimate of a "last full capacity" that degrades with pack
 age/cycles).
+
+## Limitations
+
+**Rest detection can be fooled by a balanced charge + load.** With the [wiring](#wiring)
+above, "net current near zero" is how `coulomb_counter.py` decides the pack is at rest
+and safe to recalibrate against the open-circuit-voltage table. But a charger and the
+robot's load can also cancel to a near-zero *net* reading while both are actually
+flowing - current is genuinely passing through the pack's internal resistance, so the
+terminal voltage isn't the true open-circuit voltage that recalibration assumes. A single
+net-current sensor at this location can't tell that state apart from genuine rest - there
+just isn't a second measurement to disambiguate them with. In practice this only matters
+if charge and load current happen to stay closely matched for the full `rest_settle_s`
+window, which is a narrow condition rather than typical operation, but it's a real gap
+worth knowing about rather than a solved case.
 
 ### Future work
 

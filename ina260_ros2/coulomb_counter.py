@@ -7,6 +7,13 @@ continuous estimate, but whenever the pack has been at rest (near-zero current) 
 `rest_settle_s`, snap the accumulator back to what the open-circuit-voltage curve says.
 That's a good tradeoff for a mobile-robot gauge without characterizing the pack's
 internal resistance for a full equivalent-circuit model (see README's "Future work").
+
+Known limitation: "near-zero net current" isn't proof the pack is truly at rest if the
+INA260 sits between the battery and a Y-split (charge port + load) - a charger and a load
+current can cancel to a near-zero net reading while both are actually flowing, in which
+case the terminal voltage isn't the true open-circuit voltage this relies on. There's no
+way to tell that apart from genuine rest using a single net-current sensor at that
+location (see README's "Limitations").
 """
 
 import os

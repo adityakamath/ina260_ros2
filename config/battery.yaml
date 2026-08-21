@@ -1,7 +1,10 @@
 # ina260_ros2 battery_monitor_node parameters.
-# Placeholder pack specs below (4S LiPo, 5.0 Ah) - replace with your actual pack's
-# values. cell_count/design_capacity_ah drive both the coulomb counter's OCV
-# recalibration (ocv_tables.py) and the health/status voltage cutoffs.
+# Pack specs below match Seeed Studio's LeKiwi kit stock battery (E326S, 3S1P Li-ion,
+# 18650 cells, 2550 mAh nominal - 5600 mAh on the extended dual-pack version, DC 5.5x2.1mm
+# barrel jack Y-split to the servo driver board + RPi buck module). If you're running a
+# different pack, replace these with its actual values - cell_count/design_capacity_ah
+# drive both the coulomb counter's OCV recalibration (ocv_tables.py) and the
+# health/status voltage cutoffs.
 battery_monitor_node:
   ros__parameters:
     i2c_bus: 1
@@ -10,11 +13,11 @@ battery_monitor_node:
     frame_id: base_link
     current_polarity_inverted: false  # flip if wiring reads charging as negative current
 
-    chemistry: LIPO             # LIPO or LION - selects the OCV table in ocv_tables.py
-    cell_count: 4
-    design_capacity_ah: 5.0
-    voltage_min_per_cell: 3.0   # below this -> power_supply_health = DEAD
-    voltage_max_per_cell: 4.25  # above this -> power_supply_health = OVERVOLTAGE
+    chemistry: LION              # LIPO or LION - selects the OCV table in ocv_tables.py
+    cell_count: 3
+    design_capacity_ah: 2.55     # 2550 mAh stock; 5.6 for the extended dual-pack version
+    voltage_min_per_cell: 3.0    # below this -> power_supply_health = DEAD (matches the pack's own BMS cutoff)
+    voltage_max_per_cell: 4.2    # above this -> power_supply_health = OVERVOLTAGE
 
     idle_current_threshold_a: 0.05   # |current| below this -> NOT_CHARGING / FULL status
     rest_current_threshold_a: 0.05   # |current| below this counts as "at rest" for OCV recal

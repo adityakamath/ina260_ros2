@@ -32,11 +32,11 @@ class BatteryMonitorNode(Node):
         self.declare_parameter('frame_id', 'base_link')
         self.declare_parameter('current_polarity_inverted', False)
 
-        self.declare_parameter('chemistry', 'LIPO')
-        self.declare_parameter('cell_count', 4)
-        self.declare_parameter('design_capacity_ah', 5.0)
+        self.declare_parameter('chemistry', 'LION')
+        self.declare_parameter('cell_count', 3)
+        self.declare_parameter('design_capacity_ah', 2.55)
         self.declare_parameter('voltage_min_per_cell', 3.0)
-        self.declare_parameter('voltage_max_per_cell', 4.25)
+        self.declare_parameter('voltage_max_per_cell', 4.2)
 
         self.declare_parameter('idle_current_threshold_a', 0.05)
         self.declare_parameter('rest_current_threshold_a', 0.05)

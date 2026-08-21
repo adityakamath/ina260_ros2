@@ -66,15 +66,39 @@ def read_live(sensor, duration_s=None):
         print()
 
 
-def measure_resting_voltage(sensor, settle_s=5.0):
-    print(f'Measuring resting voltage (averaging over {settle_s:.0f}s - keep the pack idle)...')
-    samples = []
-    start = time.monotonic()
-    while time.monotonic() - start < settle_s:
-        voltage, _current, _power = sensor.read()
-        samples.append(voltage)
-        time.sleep(0.25)
-    return sum(samples) / len(samples)
+def measure_resting_voltage(sensor, settle_s=5.0, current_threshold_a=0.05):
+    """Average voltage over settle_s, warning (and offering a retry) if current wasn't ~0.
+
+    If the INA260 sits between the battery and a Y-split (charge port + load), "at rest"
+    means both the charger and the load need to be disconnected - net current can read
+    near-zero with both attached and roughly balanced, which would silently produce a
+    loaded voltage reading, not the true open-circuit voltage this is meant to measure.
+    """
+    while True:
+        print(
+            f'Measuring resting voltage (averaging over {settle_s:.0f}s) - '
+            f'disconnect both the charger and any load first...'
+        )
+        voltage_samples = []
+        max_abs_current = 0.0
+        start = time.monotonic()
+        while time.monotonic() - start < settle_s:
+            voltage, current, _power = sensor.read()
+            voltage_samples.append(voltage)
+            max_abs_current = max(max_abs_current, abs(current))
+            time.sleep(0.25)
+
+        if max_abs_current > current_threshold_a:
+            print(
+                f'  warning: current reached {max_abs_current:.3f} A during sampling - '
+                f'the pack does not look at rest (threshold {current_threshold_a:.3f} A). '
+                f'Disconnect the charger and any load.'
+            )
+            if _prompt_yes_no('Retry the resting-voltage measurement?', default=True):
+                continue
+            print('  Continuing anyway - this reading may not be true open-circuit voltage.')
+
+        return sum(voltage_samples) / len(voltage_samples)
 
 
 def suggest_cell_counts(pack_voltage):
@@ -92,9 +116,18 @@ def suggest_cell_counts(pack_voltage):
 
 
 def measure_capacity(sensor, cell_count, empty_voltage_per_cell, current_polarity_inverted):
-    """Integrate discharge current from a full charge down to the empty cutoff."""
+    """Integrate net current from a full charge down to the empty cutoff.
+
+    Accumulates -current (net Ah drained since the test started), not just the magnitude
+    of negative current samples - if the INA260 sits between the battery and a Y-split
+    (charge port + load), the charger can stay connected during this test and any current
+    it contributes is correctly netted out rather than ignored. A one-sided "only count
+    current while net-negative" accumulator would overstate capacity in that case, since
+    it'd drop the charger's contribution instead of subtracting it.
+    """
     print()
     print('Capacity measurement: fully charge the pack, then discharge it under a real load.')
+    print('The charger can stay connected too - net current is tracked either way.')
     if not _prompt_yes_no('Is the pack now fully charged and discharging under load?'):
         print('Skipping capacity measurement.')
         return None
@@ -114,8 +147,10 @@ def measure_capacity(sensor, cell_count, empty_voltage_per_cell, current_polarit
             now = time.monotonic()
             dt_s = now - last_time
             last_time = now
-            # BatteryState convention: discharge current is negative; accumulate its magnitude.
-            charge_ah += abs(min(current, 0.0)) * dt_s / 3600.0
+            # BatteryState convention: current is negative while discharging, so -current*dt
+            # is the net Ah drained this tick (can go briefly negative itself if the charger
+            # momentarily outpaces the load - that's a real net recharge, not a bug).
+            charge_ah += -current * dt_s / 3600.0
             print(
                 f'\rmeasured so far: {charge_ah:6.3f} Ah   '
                 f'voltage: {voltage:6.3f} V   current: {current:6.3f} A',
@@ -171,10 +206,14 @@ def _run_wizard(sensor):
 
     print()
     print('=== Step 2: cell count ===')
+    print(
+        "Seeed's stock LeKiwi battery (E326S) is 3S1P Li-ion: ~12.6V full, "
+        '~9.0V at its built-in BMS cutoff. Skip below if that matches yours.'
+    )
     pack_voltage = measure_resting_voltage(sensor)
     print(f'Resting pack voltage: {pack_voltage:.3f} V')
     suggestions = suggest_cell_counts(pack_voltage)
-    default_cell_count = suggestions[0][0] if suggestions else 4
+    default_cell_count = suggestions[0][0] if suggestions else 3
     if suggestions:
         print('Plausible cell counts (per-cell voltage in a typical LiPo/Li-ion range):')
         for cell_count, cell_voltage in suggestions:
@@ -187,9 +226,10 @@ def _run_wizard(sensor):
     print()
     print('=== Step 3: chemistry ===')
     print("Voltage alone can't reliably distinguish LIPO from LION - check the pack label.")
-    chemistry = _prompt('Chemistry (LIPO/LION)', default='LIPO').upper()
+    print('(The stock E326S is Li-ion, 18650 cells -> LION.)')
+    chemistry = _prompt('Chemistry (LIPO/LION)', default='LION').upper()
     while chemistry not in OCV_TABLES:
-        chemistry = _prompt(f'Must be one of {sorted(OCV_TABLES)}', default='LIPO').upper()
+        chemistry = _prompt(f'Must be one of {sorted(OCV_TABLES)}', default='LION').upper()
 
     print()
     print('=== Step 4: voltage cutoffs ===')
@@ -197,7 +237,7 @@ def _run_wizard(sensor):
         'Minimum safe voltage per cell (health=DEAD below this)', default=3.0
     )
     voltage_max_per_cell = _prompt_float(
-        'Maximum safe voltage per cell (health=OVERVOLTAGE above this)', default=4.25
+        'Maximum safe voltage per cell (health=OVERVOLTAGE above this)', default=4.2
     )
 
     print()

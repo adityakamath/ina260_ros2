@@ -1,10 +1,38 @@
 """Tests for calibrate.py's pure logic: cell-count suggestion and config rewriting.
 
-The interactive wizard prompts aren't tested here - only the deterministic pieces that
-don't require stubbing input()/stdout.
+Most interactive wizard prompts aren't tested here, except measure_resting_voltage's
+current-check retry and measure_capacity's net-current integration - both fixed bugs
+worth a regression test, exercised with a fake sensor and a fake monotonic clock so
+they don't need real hardware or real elapsed time.
 """
 
-from ina260_ros2.calibrate import apply_to_config, suggest_cell_counts
+import ina260_ros2.calibrate as calibrate_module
+from ina260_ros2.calibrate import (
+    apply_to_config,
+    measure_capacity,
+    measure_resting_voltage,
+    suggest_cell_counts,
+)
+
+
+class _SequenceSensor:
+    """Returns fixed (voltage, current, power) readings from a list, one per read() call.
+
+    Advances a shared fake clock on every read() so time-bounded sampling loops (which
+    poll time.monotonic()) terminate deterministically without any real elapsed time.
+    """
+
+    def __init__(self, readings, fake_time, step_s=0.3):
+        self._readings = readings
+        self._fake_time = fake_time
+        self._step_s = step_s
+        self._index = 0
+
+    def read(self):
+        voltage, current = self._readings[min(self._index, len(self._readings) - 1)]
+        self._index += 1
+        self._fake_time[0] += self._step_s
+        return voltage, current, 0.0
 
 
 class TestSuggestCellCounts:
@@ -76,3 +104,61 @@ class TestApplyToConfig:
         path = self._write_config(tmp_path)
         apply_to_config(str(path), {'not_a_real_key': 'x'})
         assert 'not_a_real_key' in capsys.readouterr().out
+
+
+class TestMeasureRestingVoltage:
+
+    def test_averages_voltage_when_current_stays_below_threshold(self, monkeypatch):
+        fake_time = [0.0]
+        monkeypatch.setattr(calibrate_module.time, 'monotonic', lambda: fake_time[0])
+        monkeypatch.setattr(calibrate_module.time, 'sleep', lambda s: None)
+        sensor = _SequenceSensor([(4.0, 0.0)], fake_time)
+
+        voltage = measure_resting_voltage(sensor, settle_s=1.0, current_threshold_a=0.05)
+
+        assert voltage == 4.0
+
+    def test_retries_when_current_exceeds_threshold(self, monkeypatch):
+        fake_time = [0.0]
+        monkeypatch.setattr(calibrate_module.time, 'monotonic', lambda: fake_time[0])
+        monkeypatch.setattr(calibrate_module.time, 'sleep', lambda s: None)
+        # First settle_s window sees 1.0A (well above threshold) - triggers a retry prompt.
+        # Second window is quiet, so the retry should succeed and return its average.
+        readings = [(4.0, 1.0)] * 4 + [(4.0, 0.0)] * 4
+        sensor = _SequenceSensor(readings, fake_time)
+
+        prompts = []
+
+        def _fake_prompt_yes_no(text, default=True):
+            prompts.append(text)
+            return True  # accept the retry
+
+        monkeypatch.setattr(calibrate_module, '_prompt_yes_no', _fake_prompt_yes_no)
+
+        voltage = measure_resting_voltage(sensor, settle_s=1.0, current_threshold_a=0.05)
+
+        assert voltage == 4.0
+        assert len(prompts) == 1, 'should have prompted exactly once, for the noisy window'
+
+
+class TestMeasureCapacity:
+
+    def test_nets_out_a_charging_excursion_instead_of_ignoring_it(self, monkeypatch):
+        fake_time = [0.0]
+        monkeypatch.setattr(calibrate_module.time, 'monotonic', lambda: fake_time[0])
+        monkeypatch.setattr(calibrate_module.time, 'sleep', lambda s: None)
+        monkeypatch.setattr(calibrate_module, '_prompt_yes_no', lambda text, default=True: True)
+
+        # cell_count=1, empty_voltage_per_cell=3.0 for simplicity.
+        # 1A discharge, then 2A charge (e.g. the charger kicks in), then 1A discharge below
+        # cutoff. Net Ah = (-(-1) + -(2) + -(-1)) * 1s/3600 = (1 - 2 + 1)/3600 = 0.
+        # The old one-sided accumulator (abs(min(current, 0))) would have given (1+0+1)/3600
+        # instead, silently dropping the charging step rather than netting it out.
+        readings = [(4.0, -1.0), (3.9, 2.0), (2.9, -1.0)]
+        sensor = _SequenceSensor(readings, fake_time, step_s=1.0)
+
+        charge_ah = measure_capacity(
+            sensor, cell_count=1, empty_voltage_per_cell=3.0, current_polarity_inverted=False
+        )
+
+        assert abs(charge_ah - 0.0) < 1e-9
