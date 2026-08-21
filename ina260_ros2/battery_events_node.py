@@ -10,19 +10,22 @@ already knows how to observe. The server side has no real side effect beyond exi
 introspection to see - callers here are trusted to only invoke set() on a genuine edge, not
 every tick, since nothing de-duplicates repeated identical calls downstream.
 
-Five events, four services (charging/discharging are the two sides of one toggle):
-    /battery_charging  - true once on DISCHARGING -> CHARGING, false once on CHARGING -> DISCHARGING
+Three events/services:
     /battery_low       - true once percentage falls to/below low_battery_threshold
     /battery_critical  - true once percentage falls to/below critical_battery_threshold
     /battery_full      - true once percentage rises to/above full_battery_threshold
 
-The charging/discharging edge only fires on a *direct* status transition - passing through
-NOT_CHARGING or FULL in between suppresses both sides until the raw status returns to
-CHARGING or DISCHARGING. low/critical/full are independent hysteresis watchers (see
-_ThresholdWatcher) so a percentage oscillating near a threshold doesn't spam repeat calls;
-each also has a "false" side for re-arming, but phrases.yaml only wires a phrase to "true" -
-this narrates the requested once-per-edge behavior while keeping the underlying services
-genuinely two-sided for any other future consumer.
+Each is an independent hysteresis watcher (see _ThresholdWatcher) so a percentage
+oscillating near a threshold doesn't spam repeat calls; each also has a "false" side for
+re-arming, but phrases.yaml only wires a phrase to "true" - this narrates the requested
+once-per-edge behavior while keeping the underlying services genuinely two-sided for any
+other future consumer.
+
+There is deliberately no charging/discharging indicator: with the INA260 wired between the
+battery and a Y-split (charge port + robot load - see README "Wiring"), net current can't
+tell "charger connected but outpaced by the robot's load" apart from "no charger at all" -
+both produce the same negative net reading. A real fix needs an independent signal (e.g. a
+charger-presence GPIO), not a smarter algorithm on this one sensor.
 """
 
 from typing import Callable
@@ -144,7 +147,6 @@ class BatteryEventsNode(Node):
                 f'critical={critical_threshold} low={low_threshold} full={full_threshold}'
             )
 
-        self._battery_charging = _StateService(self, '/battery_charging')
         self._battery_low = _StateService(self, '/battery_low')
         self._battery_critical = _StateService(self, '/battery_critical')
         self._battery_full = _StateService(self, '/battery_full')
@@ -171,8 +173,6 @@ class BatteryEventsNode(Node):
             on_reset=lambda: self._battery_full.set(False),
         )
 
-        self._last_status = None
-
         battery_state_topic = self.get_parameter('battery_state_topic').value
         self.create_subscription(
             BatteryState, battery_state_topic, self._on_battery_state, 10
@@ -184,19 +184,6 @@ class BatteryEventsNode(Node):
         )
 
     def _on_battery_state(self, msg: BatteryState) -> None:
-        status = msg.power_supply_status
-        if (
-            self._last_status == BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
-            and status == BatteryState.POWER_SUPPLY_STATUS_CHARGING
-        ):
-            self._battery_charging.set(True)
-        elif (
-            self._last_status == BatteryState.POWER_SUPPLY_STATUS_CHARGING
-            and status == BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
-        ):
-            self._battery_charging.set(False)
-        self._last_status = status
-
         percentage = msg.percentage
         if percentage == percentage:  # NaN = unmeasured, per the message's own contract
             self._low_watcher.update(percentage)

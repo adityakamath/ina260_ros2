@@ -30,8 +30,8 @@ CircuitPython/Blinka dependency.
 - **Configurable pack model**: cell count, chemistry (`LIPO`/`LION`), design capacity,
   and voltage cutoffs for `power_supply_health`/`power_supply_status` are all parameters
 - **Service-backed battery events** (`battery_events_node`): turns `/battery_state` into
-  discrete `std_srvs/SetBool` events - charging/discharging, low/critical/full battery -
-  for anything that watches `_service_event` introspection, like a spoken indicator (see
+  discrete `std_srvs/SetBool` events - low/critical/full battery - for anything that
+  watches `_service_event` introspection, like a spoken indicator (see
   [Battery events](#battery-events))
 
 ## Wiring
@@ -133,16 +133,22 @@ ros2 launch ina260_ros2 battery_monitor.launch.py
 
 | Service | Fires `true` when | Fires `false` when |
 |---|---|---|
-| `/battery_charging` | status transitions directly `DISCHARGING` → `CHARGING` | status transitions directly `CHARGING` → `DISCHARGING` |
 | `/battery_low` | `percentage` falls to/below `low_battery_threshold` | `percentage` climbs back above `low_battery_threshold + low_battery_hysteresis` |
 | `/battery_critical` | `percentage` falls to/below `critical_battery_threshold` | `percentage` climbs back above `critical_battery_threshold + critical_battery_hysteresis` |
 | `/battery_full` | `percentage` climbs to/above `full_battery_threshold` | `percentage` falls back below `full_battery_threshold - full_battery_hysteresis` |
 
-`/battery_charging`'s edge only fires on a *direct* status transition - passing through
-`NOT_CHARGING` or `FULL` in between suppresses both sides until the raw status returns to
-`CHARGING` or `DISCHARGING`. The three percentage services are hysteresis-debounced so a
-value oscillating near a threshold doesn't spam repeat calls; `/battery_low` and
-`/battery_critical` can both fire on the same reading if a drop jumps straight past both.
+Each is hysteresis-debounced so a value oscillating near a threshold doesn't spam repeat
+calls; `/battery_low` and `/battery_critical` can both fire on the same reading if a drop
+jumps straight past both.
+
+**No charging/discharging indicator.** With the INA260 wired between the battery and a
+Y-split (charge port + robot load - see [Wiring](#wiring)), net current can't tell
+"charger connected but outpaced by the robot's load" apart from "no charger at all" - both
+produce the same negative net reading (confirmed empirically: net current stayed negative
+both with and without a charger connected while the robot was running, the difference
+between the two being exactly the charger's - insufficient - contribution). A real fix
+needs an independent signal, like a charger-presence GPIO decoupled from net current
+direction, not a smarter algorithm on this one sensor.
 
 | Parameter | Default |
 |---|---|

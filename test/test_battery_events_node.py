@@ -1,4 +1,4 @@
-"""Tests for battery_events_node: threshold hysteresis and charging/discharging edges.
+"""Tests for battery_events_node: percentage threshold hysteresis.
 
 _ThresholdWatcher is tested standalone (pure Python, no ROS). Node-level tests construct
 a real BatteryEventsNode but monkeypatch each _StateService's set() method to record calls
@@ -90,56 +90,10 @@ def node():
     n.destroy_node()
 
 
-def _battery_state(percentage=float('nan'), status=BatteryState.POWER_SUPPLY_STATUS_UNKNOWN):
+def _battery_state(percentage=float('nan')):
     msg = BatteryState()
     msg.percentage = percentage
-    msg.power_supply_status = status
     return msg
-
-
-class TestChargingDischargingEdge:
-
-    def test_fires_true_on_direct_discharging_to_charging(self, node, monkeypatch):
-        calls = []
-        monkeypatch.setattr(node._battery_charging, 'set', calls.append)
-
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_DISCHARGING))
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_CHARGING))
-
-        assert calls == [True]
-
-    def test_fires_false_on_direct_charging_to_discharging(self, node, monkeypatch):
-        calls = []
-        monkeypatch.setattr(node._battery_charging, 'set', calls.append)
-
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_CHARGING))
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_DISCHARGING))
-
-        assert calls == [False]
-
-    def test_repeated_same_status_does_not_refire(self, node, monkeypatch):
-        calls = []
-        monkeypatch.setattr(node._battery_charging, 'set', calls.append)
-
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_DISCHARGING))
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_CHARGING))
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_CHARGING))
-
-        assert calls == [True]
-
-    def test_passing_through_not_charging_suppresses_the_edge(self, node, monkeypatch):
-        calls = []
-        monkeypatch.setattr(node._battery_charging, 'set', calls.append)
-
-        node._on_battery_state(
-            _battery_state(status=BatteryState.POWER_SUPPLY_STATUS_DISCHARGING)
-        )
-        node._on_battery_state(
-            _battery_state(status=BatteryState.POWER_SUPPLY_STATUS_NOT_CHARGING)
-        )
-        node._on_battery_state(_battery_state(status=BatteryState.POWER_SUPPLY_STATUS_CHARGING))
-
-        assert calls == [], 'only a direct discharging->charging transition should fire'
 
 
 class TestPercentageThresholds:
