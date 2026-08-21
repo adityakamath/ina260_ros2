@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Launch the INA260 battery monitor node.
+"""Launch the INA260 battery monitor and battery_events nodes.
+
+battery_events_node depends on battery_monitor_node's /battery_state, so both are started
+together here rather than from separate launch files - there's no meaningful way to run
+one without the other. Both nodes read their own top-level key (battery_monitor_node /
+battery_events_node) out of the same params_file, ROS 2's normal params-file behavior.
 
 Example usage:
     ros2 launch ina260_ros2 battery_monitor.launch.py
@@ -18,7 +23,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'params_file',
             default_value=[FindPackageShare('ina260_ros2'), '/config/battery.yaml'],
-            description='Path to the battery_monitor_node parameters YAML file',
+            description='Path to the battery_monitor_node/battery_events_node parameters YAML file',
         ),
     ]
 
@@ -36,4 +41,13 @@ def generate_launch_description():
         parameters=[LaunchConfiguration('params_file')],
     )
 
-    return LaunchDescription(declared_arguments + [battery_monitor_node])
+    battery_events_node = Node(
+        package='ina260_ros2',
+        executable='battery_events_node',
+        name='battery_events_node',
+        output='log',
+        respawn=True,
+        parameters=[LaunchConfiguration('params_file')],
+    )
+
+    return LaunchDescription(declared_arguments + [battery_monitor_node, battery_events_node])

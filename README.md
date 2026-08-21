@@ -122,8 +122,13 @@ service and calls it as its own client whenever a genuine edge fires - the only 
 produce the request/response traffic a passive `_service_event` observer needs to see,
 since nothing external "calls" a battery threshold the way a person calls `/emergency_stop`.
 
+It's launched together with `battery_monitor_node` from `battery_monitor.launch.py` (it
+depends on `battery_monitor_node`'s `/battery_state`, so there's no meaningful way to run
+one without the other) - both nodes read their own top-level key out of the same
+`params_file`:
+
 ```bash
-ros2 launch ina260_ros2 battery_events.launch.py
+ros2 launch ina260_ros2 battery_monitor.launch.py
 ```
 
 | Service | Fires `true` when | Fires `false` when |
