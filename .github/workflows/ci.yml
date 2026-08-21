@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: build + test (Kilted)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup ROS 2 Kilted
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: kilted
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-smbus2 python3-yaml python3-pytest
+
+      - name: Create workspace
+        run: |
+          mkdir -p ~/ros2_ws/src
+          cp -r ${{ github.workspace }} ~/ros2_ws/src/ina260_ros2
+
+      - name: Build
+        shell: bash
+        run: |
+          source /opt/ros/kilted/setup.bash
+          cd ~/ros2_ws
+          colcon build --packages-select ina260_ros2
+
+      - name: Test
+        shell: bash
+        run: |
+          source /opt/ros/kilted/setup.bash
+          source ~/ros2_ws/install/setup.bash
+          cd ~/ros2_ws
+          colcon test --packages-select ina260_ros2 --event-handlers console_direct+
+          colcon test-result --verbose
+
+  lint:
+    name: ruff
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Run ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: 0.16.0

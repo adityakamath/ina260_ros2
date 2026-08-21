@@ -1,0 +1,27 @@
+# ina260_ros2 battery_monitor_node parameters.
+# Placeholder pack specs below (4S LiPo, 5.0 Ah) - replace with your actual pack's
+# values. cell_count/design_capacity_ah drive both the coulomb counter's OCV
+# recalibration (ocv_tables.py) and the health/status voltage cutoffs.
+battery_monitor_node:
+  ros__parameters:
+    i2c_bus: 1
+    i2c_address: 0x40          # Adafruit INA260 default address (0x40-0x4F via ADDR pins)
+    publish_rate_hz: 2.0
+    frame_id: battery_link
+    current_polarity_inverted: false  # flip if wiring reads charging as negative current
+
+    chemistry: LIPO             # LIPO or LION - selects the OCV table in ocv_tables.py
+    cell_count: 4
+    design_capacity_ah: 5.0
+    voltage_min_per_cell: 3.0   # below this -> power_supply_health = DEAD
+    voltage_max_per_cell: 4.25  # above this -> power_supply_health = OVERVOLTAGE
+
+    idle_current_threshold_a: 0.05   # |current| below this -> NOT_CHARGING / FULL status
+    rest_current_threshold_a: 0.05   # |current| below this counts as "at rest" for OCV recal
+    rest_settle_s: 60.0              # must be at rest this long before recalibrating from OCV
+    state_file_path: "~/.ros/ina260_ros2/state.yaml"
+    state_save_interval_s: 30.0
+    state_max_stale_s: 3600.0        # discard saved state older than this, reseed from OCV instead
+
+    serial_number: ""
+    location: ""
