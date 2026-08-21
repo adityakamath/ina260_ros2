@@ -45,6 +45,25 @@ Edit [`config/battery.yaml`](config/battery.yaml) for your actual pack (cell cou
 capacity, voltage cutoffs, I2C address) before relying on the published values -
 the checked-in defaults are placeholders.
 
+## Calibration
+
+`ina260_calibrate` is a standalone CLI (no ROS graph needed) for working out
+`config/battery.yaml`'s pack-specific values after wiring the battery to the INA260
+and the INA260 to the RPi over I2C:
+
+```bash
+ros2 run ina260_ros2 ina260_calibrate            # guided wizard
+ros2 run ina260_ros2 ina260_calibrate monitor    # just stream live voltage/current/power
+```
+
+The wizard walks through connectivity, cell-count suggestion (from resting voltage),
+chemistry selection, voltage cutoffs, a current-polarity check, and an optional
+full-discharge capacity measurement, then offers to write the results straight into
+`config/battery.yaml`. Voltage alone can't disambiguate everything automatically
+(e.g. 12.0V is plausible as both 3S and 4S, and LIPO/LION look identical on voltage) -
+it prompts for confirmation against the pack's label at each ambiguous step rather than
+guessing.
+
 ## Parameters
 
 | Parameter | Default | Description |
@@ -52,7 +71,7 @@ the checked-in defaults are placeholders.
 | `i2c_bus` | `1` | Linux I2C bus number (`/dev/i2c-N`) |
 | `i2c_address` | `0x40` | INA260 I2C address (`0x40`-`0x4F` via `ADDR` pins) |
 | `publish_rate_hz` | `2.0` | `BatteryState` publish rate |
-| `frame_id` | `battery_link` | Header frame ID on published messages |
+| `frame_id` | `base_link` | Header frame ID on published messages |
 | `current_polarity_inverted` | `false` | Flip current sign if wiring reads charging as negative |
 | `chemistry` | `LIPO` | `LIPO` or `LION` - selects the OCV table in `ocv_tables.py` |
 | `cell_count` | `4` | Series cell count |

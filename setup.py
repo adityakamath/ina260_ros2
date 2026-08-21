@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'battery_monitor_node = ina260_ros2.battery_monitor_node:main',
+            'ina260_calibrate = ina260_ros2.calibrate:main',
         ],
     },
 )

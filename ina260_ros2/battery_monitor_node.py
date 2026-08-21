@@ -29,7 +29,7 @@ class BatteryMonitorNode(Node):
         self.declare_parameter('i2c_bus', 1)
         self.declare_parameter('i2c_address', 0x40)
         self.declare_parameter('publish_rate_hz', 2.0)
-        self.declare_parameter('frame_id', 'battery_link')
+        self.declare_parameter('frame_id', 'base_link')
         self.declare_parameter('current_polarity_inverted', False)
 
         self.declare_parameter('chemistry', 'LIPO')
