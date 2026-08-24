@@ -2,7 +2,7 @@ from glob import glob
 
 from setuptools import find_packages, setup
 
-package_name = 'ina260_ros2'
+package_name = 'ina260_battery_monitor'
 
 setup(
     name=package_name,
@@ -24,9 +24,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'battery_monitor_node = ina260_ros2.battery_monitor_node:main',
-            'battery_events_node = ina260_ros2.battery_events_node:main',
-            'ina260_calibrate = ina260_ros2.calibrate:main',
+            'battery_monitor_node = ina260_battery_monitor.battery_monitor_node:main',
+            'battery_events_node = ina260_battery_monitor.battery_events_node:main',
+            'ina260_calibrate = ina260_battery_monitor.calibrate:main',
         ],
     },
 )

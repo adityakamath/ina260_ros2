@@ -7,7 +7,7 @@ in test_ina260_sensor.py.
 
 import pytest
 import rclpy
-from ina260_ros2 import battery_monitor_node as node_module
+from ina260_battery_monitor import battery_monitor_node as node_module
 from sensor_msgs.msg import BatteryState
 
 

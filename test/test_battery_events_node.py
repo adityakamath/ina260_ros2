@@ -8,7 +8,7 @@ verify the edge-detection logic that decides *when* set() should fire.
 
 import pytest
 import rclpy
-from ina260_ros2.battery_events_node import BatteryEventsNode, _ThresholdWatcher
+from ina260_battery_monitor.battery_events_node import BatteryEventsNode, _ThresholdWatcher
 from sensor_msgs.msg import BatteryState
 
 

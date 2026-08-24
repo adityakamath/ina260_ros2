@@ -25,14 +25,14 @@ jobs:
       - name: Create workspace
         run: |
           mkdir -p ~/ros2_ws/src
-          cp -r ${{ github.workspace }} ~/ros2_ws/src/ina260_ros2
+          cp -r ${{ github.workspace }} ~/ros2_ws/src/ina260_battery_monitor
 
       - name: Build
         shell: bash
         run: |
           source /opt/ros/kilted/setup.bash
           cd ~/ros2_ws
-          colcon build --packages-select ina260_ros2
+          colcon build --packages-select ina260_battery_monitor
 
       - name: Test
         shell: bash
@@ -40,7 +40,7 @@ jobs:
           source /opt/ros/kilted/setup.bash
           source ~/ros2_ws/install/setup.bash
           cd ~/ros2_ws
-          colcon test --packages-select ina260_ros2 --event-handlers console_direct+
+          colcon test --packages-select ina260_battery_monitor --event-handlers console_direct+
           colcon test-result --verbose
 
   lint:

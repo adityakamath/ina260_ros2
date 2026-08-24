@@ -15,8 +15,8 @@ import os
 import time
 
 import rclpy
-from ina260_ros2.coulomb_counter import CoulombCounter
-from ina260_ros2.ina260_sensor import INA260Error, INA260Sensor
+from ina260_battery_monitor.coulomb_counter import CoulombCounter
+from ina260_battery_monitor.ina260_sensor import INA260Error, INA260Sensor
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState
 
@@ -46,7 +46,7 @@ class BatteryMonitorNode(Node):
         self.declare_parameter('idle_current_threshold_a', 0.05)
         self.declare_parameter('rest_current_threshold_a', 0.05)
         self.declare_parameter('rest_settle_s', 60.0)
-        self.declare_parameter('state_file_path', '~/.ros/ina260_ros2/state.yaml')
+        self.declare_parameter('state_file_path', '~/.ros/ina260_battery_monitor/state.yaml')
         self.declare_parameter('state_save_interval_s', 30.0)
         self.declare_parameter('state_max_stale_s', 3600.0)
 
@@ -109,7 +109,7 @@ class BatteryMonitorNode(Node):
         self._timer = self.create_timer(1.0 / publish_rate_hz, self._on_timer)
 
         self.get_logger().info(
-            f'ina260_ros2 started: bus={self.get_parameter("i2c_bus").value} '
+            f'ina260_battery_monitor started: bus={self.get_parameter("i2c_bus").value} '
             f'address=0x{self.get_parameter("i2c_address").value:02X} '
             f'chemistry={chemistry} cells={self._cell_count} '
             f'capacity={self._design_capacity_ah}Ah'

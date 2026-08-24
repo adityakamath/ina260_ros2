@@ -3,16 +3,16 @@
 ![Project Status](https://img.shields.io/badge/Status-Active-green)
 ![ROS 2](https://img.shields.io/badge/ROS%202-Kilted%20(Ubuntu%2024.04)-blue?style=flat&logo=ros&logoSize=auto)
 ![Python](https://img.shields.io/badge/Python-3-blue?style=flat&logo=python&logoColor=white)
-[![CI](https://github.com/adityakamath/ina260_ros2/actions/workflows/ci.yml/badge.svg)](https://github.com/adityakamath/ina260_ros2/actions/workflows/ci.yml)
-![License](https://img.shields.io/github/license/adityakamath/ina260_ros2?label=License)
+[![CI](https://github.com/adityakamath/ina260_battery_monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/adityakamath/ina260_battery_monitor/actions/workflows/ci.yml)
+[![Ask DeepWiki (Experimental)](https://deepwiki.com/badge.svg)](https://deepwiki.com/adityakamath/ina260_battery_monitor)
+![License](https://img.shields.io/github/license/adityakamath/ina260_battery_monitor?label=License)
 
 Publishes [`sensor_msgs/BatteryState`](https://docs.ros.org/en/kilted/p/sensor_msgs/interfaces/msg/BatteryState.html)
 from an [Adafruit INA260](https://www.adafruit.com/product/4226) current/voltage/power
 sensor over I2C, with software coulomb counting for charge and percentage estimation.
 
 **⚠️ Status:** Built for Raspberry Pi 5 running ROS 2 Kilted (Ubuntu 24.04, aarch64).
-Talks to the INA260 directly over Linux `i2c-dev` via `smbus2` - no Adafruit
-CircuitPython/Blinka dependency.
+Talks to the INA260 directly over Linux `i2c-dev` via `smbus2`.
 
 ## Features
 
@@ -52,11 +52,11 @@ continuity check (battery `-` to INA260 `GND`) if voltage readings look off.
 
 ```bash
 cd ~/ros2_ws/src
-git clone https://github.com/adityakamath/ina260_ros2.git
+git clone https://github.com/adityakamath/ina260_battery_monitor.git
 cd ~/ros2_ws
-colcon build --packages-select ina260_ros2
+colcon build --packages-select ina260_battery_monitor
 source install/setup.bash
-ros2 launch ina260_ros2 battery_monitor.launch.py
+ros2 launch ina260_battery_monitor battery_monitor.launch.py
 ```
 
 The checked-in [`config/battery.yaml`](config/battery.yaml) defaults match Seeed
@@ -71,8 +71,8 @@ run the [calibration wizard](#calibration) below before relying on the published
 and the INA260 to the RPi over I2C:
 
 ```bash
-ros2 run ina260_ros2 ina260_calibrate            # guided wizard
-ros2 run ina260_ros2 ina260_calibrate monitor    # just stream live voltage/current/power
+ros2 run ina260_battery_monitor ina260_calibrate            # guided wizard
+ros2 run ina260_battery_monitor ina260_calibrate monitor    # just stream live voltage/current/power
 ```
 
 The wizard walks through connectivity, cell-count suggestion (from resting voltage),
@@ -106,7 +106,7 @@ netted out correctly rather than ignored.
 | `idle_current_threshold_a` | `0.05` | `\|current\|` below this → `NOT_CHARGING`/`FULL` status |
 | `rest_current_threshold_a` | `0.05` | `\|current\|` below this counts as "at rest" for OCV recalibration |
 | `rest_settle_s` | `60.0` | Must be at rest this long before recalibrating from OCV |
-| `state_file_path` | `~/.ros/ina260_ros2/state.yaml` | Where coulomb-counter state is persisted |
+| `state_file_path` | `~/.ros/ina260_battery_monitor/state.yaml` | Where coulomb-counter state is persisted |
 | `state_save_interval_s` | `30.0` | How often state is written to disk |
 | `state_max_stale_s` | `3600.0` | Discard saved state older than this; reseed from OCV instead |
 | `serial_number` | `""` | `BatteryState.serial_number` |
@@ -128,7 +128,7 @@ one without the other) - both nodes read their own top-level key out of the same
 `params_file`:
 
 ```bash
-ros2 launch ina260_ros2 battery_monitor.launch.py
+ros2 launch ina260_battery_monitor battery_monitor.launch.py
 ```
 
 | Service | Fires `true` when | Fires `false` when |

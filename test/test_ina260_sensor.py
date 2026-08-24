@@ -6,8 +6,8 @@ Stubs smbus2.SMBus so these run without a real I2C bus/device.
 import struct
 
 import pytest
-from ina260_ros2 import ina260_sensor as sensor_module
-from ina260_ros2.ina260_sensor import INA260Error, INA260Sensor
+from ina260_battery_monitor import ina260_sensor as sensor_module
+from ina260_battery_monitor.ina260_sensor import INA260Error, INA260Sensor
 
 
 class _FakeBus:

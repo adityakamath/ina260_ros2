@@ -1,4 +1,4 @@
-"""Interactive calibration tool for ina260_ros2.
+"""Interactive calibration tool for ina260_battery_monitor.
 
 Run this after wiring the battery to the INA260 breakout and the INA260 to the RPi
 over I2C, to work out cell_count, chemistry, voltage cutoffs, current polarity and
@@ -6,8 +6,8 @@ over I2C, to work out cell_count, chemistry, voltage cutoffs, current polarity a
 via INA260Sensor - no ROS graph, no node, just a live read/prompt loop over I2C, so it
 also doubles as a standalone connectivity check.
 
-    ros2 run ina260_ros2 ina260_calibrate            # guided wizard (default)
-    ros2 run ina260_ros2 ina260_calibrate monitor    # just stream live readings
+    ros2 run ina260_battery_monitor ina260_calibrate            # guided wizard (default)
+    ros2 run ina260_battery_monitor ina260_calibrate monitor    # just stream live readings
 """
 
 import argparse
@@ -16,8 +16,8 @@ import re
 import sys
 import time
 
-from ina260_ros2.ina260_sensor import INA260Error, INA260Sensor
-from ina260_ros2.ocv_tables import OCV_TABLES
+from ina260_battery_monitor.ina260_sensor import INA260Error, INA260Sensor
+from ina260_battery_monitor.ocv_tables import OCV_TABLES
 
 # Covers both the LIPO and LION tables in ocv_tables.py with a little margin either side.
 _PLAUSIBLE_CELL_VOLTAGE_RANGE = (2.5, 4.35)

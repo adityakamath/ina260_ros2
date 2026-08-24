@@ -6,8 +6,8 @@ worth a regression test, exercised with a fake sensor and a fake monotonic clock
 they don't need real hardware or real elapsed time.
 """
 
-import ina260_ros2.calibrate as calibrate_module
-from ina260_ros2.calibrate import (
+import ina260_battery_monitor.calibrate as calibrate_module
+from ina260_battery_monitor.calibrate import (
     apply_to_config,
     measure_capacity,
     measure_resting_voltage,

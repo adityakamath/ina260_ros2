@@ -7,8 +7,8 @@ one without the other. Both nodes read their own top-level key (battery_monitor_
 battery_events_node) out of the same params_file, ROS 2's normal params-file behavior.
 
 Example usage:
-    ros2 launch ina260_ros2 battery_monitor.launch.py
-    ros2 launch ina260_ros2 battery_monitor.launch.py params_file:=/path/to/my_battery.yaml
+    ros2 launch ina260_battery_monitor battery_monitor.launch.py
+    ros2 launch ina260_battery_monitor battery_monitor.launch.py params_file:=/path/to/my_battery.yaml
 """
 
 from launch import LaunchDescription
@@ -22,13 +22,13 @@ def generate_launch_description():
     declared_arguments = [
         DeclareLaunchArgument(
             'params_file',
-            default_value=[FindPackageShare('ina260_ros2'), '/config/battery.yaml'],
+            default_value=[FindPackageShare('ina260_battery_monitor'), '/config/battery.yaml'],
             description='Path to the battery_monitor_node/battery_events_node parameters YAML file',
         ),
     ]
 
     battery_monitor_node = Node(
-        package='ina260_ros2',
+        package='ina260_battery_monitor',
         executable='battery_monitor_node',
         name='battery_monitor_node',
         output='log',
@@ -42,7 +42,7 @@ def generate_launch_description():
     )
 
     battery_events_node = Node(
-        package='ina260_ros2',
+        package='ina260_battery_monitor',
         executable='battery_events_node',
         name='battery_events_node',
         output='log',

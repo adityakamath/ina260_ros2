@@ -22,7 +22,7 @@ import time
 
 import yaml
 
-from ina260_ros2.ocv_tables import voltage_to_soc
+from ina260_battery_monitor.ocv_tables import voltage_to_soc
 
 
 class CoulombCounter:

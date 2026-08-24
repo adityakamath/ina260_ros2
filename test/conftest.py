@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for ina260_ros2 tests."""
+"""Shared pytest fixtures for ina260_battery_monitor tests."""
 import pytest
 import rclpy
 

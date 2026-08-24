@@ -1,6 +1,6 @@
 """Tests for the OCV-to-state-of-charge lookup/interpolation."""
 
-from ina260_ros2.ocv_tables import OCV_TABLES, voltage_to_soc
+from ina260_battery_monitor.ocv_tables import OCV_TABLES, voltage_to_soc
 
 
 class TestVoltageToSoc:

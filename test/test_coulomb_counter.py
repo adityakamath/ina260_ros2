@@ -1,8 +1,8 @@
 """Tests for CoulombCounter: integration, clamping, rest recalibration, persistence."""
 
-import ina260_ros2.coulomb_counter as coulomb_counter_module
+import ina260_battery_monitor.coulomb_counter as coulomb_counter_module
 import pytest
-from ina260_ros2.coulomb_counter import CoulombCounter
+from ina260_battery_monitor.coulomb_counter import CoulombCounter
 
 _DESIGN_CAPACITY_AH = 5.0
 _CELL_COUNT = 4

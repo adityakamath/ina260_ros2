@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ina260_ros2</name>
+  <name>ina260_battery_monitor</name>
   <version>0.1.0</version>
   <description>Publishes sensor_msgs/BatteryState from an Adafruit INA260 current/power sensor over I2C, with software coulomb counting for charge/percentage estimation.</description>
   <maintainer email="adityakamath@live.com">Aditya Kamath (Kamath Robotics)</maintainer>
