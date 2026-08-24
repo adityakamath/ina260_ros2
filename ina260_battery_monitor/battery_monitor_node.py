@@ -13,12 +13,17 @@ if whoever launches it forgets to set battery_monitor:=false.
 
 import os
 import time
+from pathlib import Path
 
 import rclpy
 from ina260_battery_monitor.coulomb_counter import CoulombCounter
 from ina260_battery_monitor.ina260_sensor import INA260Error, INA260Sensor
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState
+
+# Package-relative, not ~/.ros: resolved from this file's own location so it works
+# wherever the package is checked out/installed, and stays gitignored in-place.
+_DEFAULT_STATE_PATH = str(Path(__file__).resolve().parent.parent / 'state' / 'state.yaml')
 
 _TECHNOLOGY_BY_NAME = {
     'LIPO': BatteryState.POWER_SUPPLY_TECHNOLOGY_LIPO,
@@ -46,7 +51,7 @@ class BatteryMonitorNode(Node):
         self.declare_parameter('idle_current_threshold_a', 0.05)
         self.declare_parameter('rest_current_threshold_a', 0.05)
         self.declare_parameter('rest_settle_s', 60.0)
-        self.declare_parameter('state_file_path', '~/.ros/ina260_battery_monitor/state.yaml')
+        self.declare_parameter('state_file_path', _DEFAULT_STATE_PATH)
         self.declare_parameter('state_save_interval_s', 30.0)
         self.declare_parameter('state_max_stale_s', 3600.0)
 

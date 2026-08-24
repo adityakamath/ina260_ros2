@@ -106,7 +106,7 @@ netted out correctly rather than ignored.
 | `idle_current_threshold_a` | `0.05` | `\|current\|` below this → `NOT_CHARGING`/`FULL` status |
 | `rest_current_threshold_a` | `0.05` | `\|current\|` below this counts as "at rest" for OCV recalibration |
 | `rest_settle_s` | `60.0` | Must be at rest this long before recalibrating from OCV |
-| `state_file_path` | `~/.ros/ina260_battery_monitor/state.yaml` | Where coulomb-counter state is persisted |
+| `state_file_path` | `<package>/state/state.yaml` | Where coulomb-counter state is persisted (gitignored, package-relative by default) |
 | `state_save_interval_s` | `30.0` | How often state is written to disk |
 | `state_max_stale_s` | `3600.0` | Discard saved state older than this; reseed from OCV instead |
 | `serial_number` | `""` | `BatteryState.serial_number` |
@@ -169,6 +169,11 @@ open-circuit-voltage lookup table says for the resting voltage.
 `capacity` is currently always reported equal to `design_capacity` - there's no
 capacity-fade tracking (no estimate of a "last full capacity" that degrades with pack
 age/cycles).
+
+`state_file_path` defaults to a `state/` directory inside the package itself (gitignored,
+resolved relative to `battery_monitor_node.py`'s own file location) rather than `~/.ros` -
+keeps persisted runtime state out of the home directory without hardcoding a path that
+would break on a different machine or checkout location.
 
 ## Limitations
 
