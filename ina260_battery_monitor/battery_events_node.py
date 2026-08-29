@@ -1,14 +1,14 @@
 """Turns continuous /battery_state readings into discrete SetBool service events.
 
 lekiwi_audio's indicator_node only ever passively watches existing services' own
-_service_event introspection (see STATE_SERVICES there, and /emergency_stop, /twist_switch,
-/waypoint_follow) - it never subscribes to sensor topics directly. This node is what makes
-"battery low"/"battery full"/etc. a service-backed piece of state like everything else it
-narrates: it hosts a SetBool per event, and calls that same service as its own client
-whenever a genuine edge fires, purely to produce the request/response traffic indicator_node
-already knows how to observe. The server side has no real side effect beyond existing for
-introspection to see - callers here are trusted to only invoke set() on a genuine edge, not
-every tick, since nothing de-duplicates repeated identical calls downstream.
+_service_event introspection (see its state_services parameter, and /emergency_stop,
+/twist_switch, /waypoint_follow) - it never subscribes to sensor topics directly. This node
+is what makes "battery low"/"battery full"/etc. a service-backed piece of state like
+everything else it narrates: it hosts a SetBool per event, and calls that same service as
+its own client whenever a genuine edge fires, purely to produce the request/response traffic
+indicator_node already knows how to observe. The server side has no real side effect beyond
+existing for introspection to see - callers here are trusted to only invoke set() on a
+genuine edge, not every tick, since nothing de-duplicates repeated identical calls downstream.
 
 Three events/services:
     /battery_low       - true once percentage falls to/below low_battery_threshold
